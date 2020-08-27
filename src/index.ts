@@ -1,23 +1,13 @@
 import { SetRequired } from 'type-fest'
-
-type Without<Type, Keys extends keyof Type> = Omit<Type, Keys> &
-  { [KeyType in Keys]?: never }
-type Only<Type, Keys extends keyof Type> = Pick<Type, Keys> &
-  { [KeyType in Exclude<keyof Type, Keys>]?: never }
-
-type Values<T> = T[keyof T]
-type ArrayValues<Arr extends readonly any[]> = Arr extends readonly (infer T)[]
-  ? T
-  : 'fail'
-
-type TupleConcat<A extends readonly any[], B extends readonly any[]> = [
-  ...A,
-  ...B
-]
-
-type TupleToMappable<T extends readonly any[]> = Omit<T, keyof []>
-
-type TypeEq<A, B> = A extends B ? (B extends A ? true : false) : false
+import {
+  Without,
+  Only,
+  Values,
+  ArrayValues,
+  TupleConcat,
+  TupleToMappable,
+  TypeEq,
+} from './utils'
 
 interface BaseSchema {
   readonly type?: string

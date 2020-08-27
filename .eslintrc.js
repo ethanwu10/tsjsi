@@ -28,7 +28,6 @@ module.exports = {
       plugins: ['@typescript-eslint'],
       parserOptions: {
         tsconfigRootDir: __dirname,
-        project: ['./tsconfig.json'],
       },
       rules: {
         '@typescript-eslint/no-explicit-any': 'off',
@@ -36,12 +35,18 @@ module.exports = {
     },
     {
       files: ['src/**/*.ts'],
+      parserOptions: {
+        project: ['src/tsconfig.json'],
+      },
       extends: [
         'plugin:@typescript-eslint/recommended-requiring-type-checking',
       ],
     },
     {
       files: ['test-d/**/*.ts'],
+      parserOptions: {
+        project: ['test-d/tsconfig.json'],
+      },
       rules: {
         '@typescript-eslint/ban-ts-comment': [
           'error',
