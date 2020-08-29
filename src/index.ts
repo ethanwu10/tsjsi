@@ -4,7 +4,6 @@ import {
   Only,
   Values,
   ArrayValues,
-  TupleConcat,
   TupleToMappable,
   TypeEq,
 } from './utils'
@@ -301,13 +300,13 @@ type ObjectSchemaToType<
   Omit<
     ObjectSchemaPropertiesToType<Schema>,
     ObjectSchemaFlattenRequiredArrays<
-      TupleConcat<ExtractObjectAnyOf<Schema>, ExtractObjectOneOf<Schema>>
+      [...ExtractObjectAnyOf<Schema>, ...ExtractObjectOneOf<Schema>]
     >
   >,
   Exclude<
     ExtractRequiredProps<Schema>,
     ObjectSchemaFlattenRequiredArrays<
-      TupleConcat<ExtractObjectAnyOf<Schema>, ExtractObjectOneOf<Schema>>
+      [...ExtractObjectAnyOf<Schema>, ...ExtractObjectOneOf<Schema>]
     >
   >
 > &

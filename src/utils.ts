@@ -8,11 +8,6 @@ export type ArrayValues<
   Arr extends readonly any[]
 > = Arr extends readonly (infer T)[] ? T : 'fail'
 
-export type TupleConcat<A extends readonly any[], B extends readonly any[]> = [
-  ...A,
-  ...B
-]
-
 export type TupleToMappable<T extends readonly any[]> = Omit<T, keyof []>
 
 export type TypeEq<A, B> = A extends B ? (B extends A ? true : false) : false
