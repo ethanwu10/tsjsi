@@ -68,6 +68,46 @@ interface ObjectSchema<
   readonly required?: readonly RequiredProps[]
 }
 
+interface BaseArraySchema<
+  AnyOfSchema extends readonly Partial<
+    Without<BaseArraySchema<never, never>, 'type'>
+  >[],
+  OneOfSchema extends readonly Partial<
+    Without<BaseArraySchema<never, never>, 'type'>
+  >[]
+> extends BaseTypedSchema<AnyOfSchema, OneOfSchema> {
+  readonly type: 'array'
+  readonly minItems?: number
+  readonly maxItems?: number
+  readonly uniqueItems?: boolean
+}
+
+interface ArrayListSchema<
+  ItemSchema extends AnyBaseSchema,
+  AnyOfSchema extends readonly Partial<
+    Without<ArrayListSchema<any, never, never>, 'type' | 'items'>
+  >[],
+  OneOfSchema extends readonly Partial<
+    Without<ArrayListSchema<any, never, never>, 'type' | 'items'>
+  >[]
+> extends BaseArraySchema<AnyOfSchema, OneOfSchema> {
+  readonly items: ItemSchema
+}
+
+interface ArrayTupleSchema<
+  ItemSchemas extends readonly AnyBaseSchema[],
+  AdditionalItemsSchema extends boolean | AnyBaseSchema,
+  AnyOfSchema extends readonly Partial<
+    Without<ArrayTupleSchema<any, never, never, never>, 'type' | 'items'>
+  >[],
+  OneOfSchema extends readonly Partial<
+    Without<ArrayTupleSchema<any, never, never, never>, 'type' | 'items'>
+  >[]
+> extends BaseArraySchema<AnyOfSchema, OneOfSchema> {
+  readonly items: ItemSchemas
+  readonly additionalItems?: AdditionalItemsSchema
+}
+
 interface NumericSchema<
   EnumValues extends number,
   AnyOfSchema extends readonly Partial<
@@ -109,16 +149,26 @@ interface BooleanSchema<
 type AnyBaseSchema =
   | EmptySchema<readonly AnyBaseSchema[]>
   | ObjectSchema<Record<string, AnyBaseSchema>, string, any, any>
+  | ArrayListSchema<AnyBaseSchema, any, any>
+  | ArrayTupleSchema<
+      readonly AnyBaseSchema[],
+      boolean | AnyBaseSchema,
+      any,
+      any
+    >
   | NumericSchema<number, any, any>
   | StringSchema<string, any, any>
   | BooleanSchema<boolean, any, any>
 
+// EmptySchema
 export function castSchema<AnyOfSchema extends readonly AnyBaseSchema[]>(
   s: EmptySchema<AnyOfSchema>
 ): EmptySchema<AnyOfSchema>
+// ObjectSchema without `required` or `anyOf`/`oneOf`
 export function castSchema<Properties extends Record<string, AnyBaseSchema>>(
   s: ObjectSchema<Properties, never, [], []>
 ): ObjectSchema<Properties, never, [], []>
+// ObjectSchema without `required`
 export function castSchema<
   Properties extends Record<string, AnyBaseSchema>,
   AnyOfSchema extends readonly Partial<
@@ -130,12 +180,14 @@ export function castSchema<
 >(
   s: ObjectSchema<Properties, never, AnyOfSchema, OneOfSchema>
 ): ObjectSchema<Properties, never, AnyOfSchema, OneOfSchema>
+// ObjectSchema without `anyOf`/`oneOf`
 export function castSchema<
   Properties extends Record<string, AnyBaseSchema>,
   RequiredProps extends keyof Properties = never
 >(
   s: ObjectSchema<Properties, RequiredProps, [], []>
 ): ObjectSchema<Properties, RequiredProps, [], []>
+// ObjectSchema
 export function castSchema<
   Properties extends Record<string, AnyBaseSchema>,
   RequiredProps extends keyof Properties = never,
@@ -164,6 +216,42 @@ export function castSchema<
 >(
   s: ObjectSchema<Properties, RequiredProps, AnyOfSchema, OneOfSchema>
 ): ObjectSchema<Properties, RequiredProps, AnyOfSchema, OneOfSchema>
+// ArrayListSchema
+export function castSchema<
+  ItemSchema extends AnyBaseSchema,
+  AnyOfSchema extends readonly Partial<
+    Without<ArrayListSchema<any, never, never>, 'type' | 'items'>
+  >[] = [],
+  OneOfSchema extends readonly Partial<
+    Without<ArrayListSchema<any, never, never>, 'type' | 'items'>
+  >[] = []
+>(
+  s: ArrayListSchema<ItemSchema, AnyOfSchema, OneOfSchema>
+): ArrayListSchema<ItemSchema, AnyOfSchema, OneOfSchema>
+// ArrayTupleSchema
+export function castSchema<
+  ItemSchemas extends readonly AnyBaseSchema[],
+  AdditionalItemsSchema extends boolean | AnyBaseSchema = true,
+  AnyOfSchema extends readonly Partial<
+    Without<ArrayTupleSchema<any, never, never, never>, 'type' | 'items'>
+  >[] = [],
+  OneOfSchema extends readonly Partial<
+    Without<ArrayTupleSchema<any, never, never, never>, 'type' | 'items'>
+  >[] = []
+>(
+  s: ArrayTupleSchema<
+    ItemSchemas,
+    AdditionalItemsSchema,
+    AnyOfSchema,
+    OneOfSchema
+  >
+): ArrayTupleSchema<
+  ItemSchemas,
+  AdditionalItemsSchema,
+  AnyOfSchema,
+  OneOfSchema
+>
+// NumericSchema
 export function castSchema<
   EnumValues extends number,
   AnyOfSchema extends readonly Partial<
@@ -178,6 +266,7 @@ export function castSchema<
     OneOfSchema
   > = NumericSchema<EnumValues, AnyOfSchema, OneOfSchema>
 >(s: NumericSchema<EnumValues, AnyOfSchema, OneOfSchema>): SchemaType
+// StringSchema
 export function castSchema<
   EnumValues extends string,
   AnyOfSchema extends readonly Partial<
@@ -192,6 +281,7 @@ export function castSchema<
     OneOfSchema
   > = StringSchema<EnumValues, AnyOfSchema, OneOfSchema>
 >(s: StringSchema<EnumValues, AnyOfSchema, OneOfSchema>): SchemaType
+// BooleanSchema
 export function castSchema<
   EnumValues extends boolean,
   AnyOfSchema extends readonly Partial<
@@ -313,6 +403,46 @@ type ObjectSchemaToType<
   ObjectSchemaAnyOfPartial<Schema> &
   ObjectSchemaOneOfPartial<Schema>
 
+type ArrayListSchemaToType<
+  Schema extends ArrayListSchema<any, any, any>
+> = Schema extends ArrayListSchema<infer ItemSchema, any, any>
+  ? SchemaToType<ItemSchema>[]
+  : 'fail'
+
+type ArrayTupleItemSchemasToTuple<
+  ItemSchemas extends readonly AnyBaseSchema[]
+> = {
+  recur: ItemSchemas extends readonly [infer First, ...infer Rest]
+    ? Rest extends readonly AnyBaseSchema[]
+      ? [SchemaToType<First>, ...ArrayTupleItemSchemasToTuple<Rest>]
+      : []
+    : []
+  base: []
+}[ItemSchemas extends [] ? 'base' : 'recur']
+
+type ArrayTupleSchemaToType<
+  Schema extends ArrayTupleSchema<any, any, any, any>
+> = Schema extends ArrayTupleSchema<
+  infer ItemSchemas,
+  infer AdditionalItemsSchema,
+  any,
+  any
+>
+  ? AdditionalItemsSchema extends false
+    ? ArrayTupleItemSchemasToTuple<ItemSchemas>
+    : AdditionalItemsSchema extends true
+    ? [...ArrayTupleItemSchemasToTuple<ItemSchemas>, ...any[]]
+    : {
+        ok: AdditionalItemsSchema extends AnyBaseSchema
+          ? [
+              ...ArrayTupleItemSchemasToTuple<ItemSchemas>,
+              ...SchemaToType<AdditionalItemsSchema>[]
+            ]
+          : 'fail'
+        fail: 'fail'
+      }[AdditionalItemsSchema extends AnyBaseSchema ? 'ok' : 'fail']
+  : 'fail'
+
 type EmptySchemaToType<
   Schema extends EmptySchema<any>
 > = Schema extends EmptySchema<infer AnyOfSchema>
@@ -331,6 +461,10 @@ export type SchemaToType<
   ? EmptySchemaToType<Schema>
   : Schema extends ObjectSchema<any, any, any, any>
   ? ObjectSchemaToType<Schema>
+  : Schema extends ArrayListSchema<AnyBaseSchema, any, any>
+  ? ArrayListSchemaToType<Schema>
+  : Schema extends ArrayTupleSchema<readonly AnyBaseSchema[], any, any, any>
+  ? ArrayTupleSchemaToType<Schema>
   : Schema extends NumericSchema<infer NumericValues, any, any>
   ? NumericValues
   : Schema extends StringSchema<infer StringValues, any, any>
